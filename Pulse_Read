@@ -1,0 +1,87 @@
+int ct1 = 2;//2pin
+int ct2 = 3;//3pin
+int r6c = 10;//3pin
+int AUT = 11;//3pin
+int rd1 = 2;//A2pin
+int rd2 = 3;//A3pin
+int val = 0;//Analog読み取り
+int cycle = 100;//読み取りサイクル(cnt/msec)
+volatile unsigned int pulse1;
+volatile unsigned int pulse2;
+volatile unsigned int po1;
+volatile unsigned int po2;
+
+
+
+
+void setup()
+{
+  Serial.begin(9600);
+  pinMode(ct1, INPUT);
+  pinMode(ct2, INPUT);
+  attachInterrupt(0, count_pulse1, RISING); //割り込み番号0(pin2)で、立ち上がり時に割り込みで関数count_pulseを実行
+  attachInterrupt(1, count_pulse2, RISING); //割り込み番号1(pin3)で、立ち上がり時に割り込みで関数count_pulseを実行
+  pinMode(AUT, OUTPUT);
+  
+}
+
+
+void loop()
+{
+
+  //AUTO/MANUAL分岐。ピン10の電気信号でリレーを操作し、PWM1/2として読み取るパルス信号を切り換える
+  val = pulseIn( r6c, HIGH, 29412);
+  if ( val <= 1700) {
+    digitalWrite(AUT, LOW);
+  } else {
+    digitalWrite(AUT, HIGH);
+  }
+
+
+
+
+  //１秒ごとにパルスをカウント
+  pulse1 = 0;//パルス数初期化
+  pulse2 = 0;//パルス数初期化
+  interrupts(); //割り込み有効
+  delay( cycle );//パルス数送信周期の調整
+  noInterrupts();//割り込み無効
+
+  if (analogRead( rd1 ) <= 500){
+    po1 = 0;
+  } else {
+    po1 = 1;
+  }
+    if (analogRead( rd2 ) <= 500){
+    po2 = 1;
+  } else {
+    po2 = 0;
+  }
+
+
+  //デバッグ用出力
+
+  Serial.print(po1);//正転0　逆転1  
+  Serial.print("/");
+  Serial.print(pulse1);
+  Serial.print("/");
+  Serial.print(po2);//正転0　逆転1
+  Serial.print("/");
+  Serial.println( pulse2 );
+
+
+
+}
+
+
+void count_pulse1()
+{
+  pulse1++;
+
+
+}
+
+void count_pulse2()
+{
+  pulse2++;
+}
