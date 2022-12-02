@@ -1,0 +1,81 @@
+int val = 0;    //汎用計算用変数。使用する場合は都度初期化すること
+int PWM = 0;        //スイッチPWMパルス幅
+int STPWM  = 0;      //前回のスイッチPWMパルス幅
+int r1 = 0;     //アクチュエータ1センサ読み取りピン
+int r2 = 1;     //アクチュエータ2センサ読み取りピン
+int s1 = 0;     //アクチュエータ1センサ値
+int s2 = 0;     //アクチュエータ2センサ値
+int sd = 0;     //アクチュエータ1/2センサ値の差
+int in1 = 10;     //伸びピン1
+int in2 = 12;     //伸びピン2
+int out1 = 11;    //縮みピン1
+int out2 = 13;    //縮みピン2
+int rd = 9;     //スイッチPWM入力ピン
+
+void setup() {
+  Serial.begin(9600); //シリアル通信のデータ転送レートを9600bpsで指定。bpsはビット/秒。
+  pinMode(in1,  OUTPUT);        //10番ピンを出力用に設定する
+  pinMode(in2,  OUTPUT);        //11番ピンを出力用に設定する
+  pinMode(out1,  OUTPUT);        //12番ピンを出力用に設定する
+  pinMode(out2,  OUTPUT);        //13番ピンを出力用に設定する
+  pinMode(rd,  INPUT);        //9番ピンを入力用に設定する
+}
+
+void loop() {
+
+  //スイッチPWM読み取り
+  val = 0;
+  PWM = pulseIn( rd, HIGH, 29412);
+  val = PWM - STPWM;
+  if ((-100 <= val) || (val >= 100)) { //ノイズ対策で１周期分無視する→１周期分遅れて伸び縮み開始する
+    val = 1;
+  }
+
+  //アナログ電圧読み取り
+  s1 = analogRead( r1 );//センサ値を0~5Vで読み取り
+  s2 = analogRead( r2 );
+
+  sd = s1 - s2; //センサ値の差
+  sd = 0; //デバッグ用
+
+  if ((PWM > 1700) && (val == 1)) { //伸び制御
+    digitalWrite(in1, LOW);
+    digitalWrite(in2, LOW);
+    if (sd > -100) {
+      digitalWrite(out2, HIGH);
+    } if (sd < 100) {
+      digitalWrite(out1, HIGH);
+    }
+  }
+  else if ((PWM < 1100) && (PWM > 900)) { //縮み制御
+    if (val == 1) {
+      digitalWrite(out1, LOW);
+      digitalWrite(out2, LOW);
+      if (sd < 100) {
+        digitalWrite(in2, HIGH);
+      } if (sd > -100) {
+        digitalWrite(in1, HIGH);
+      }
+    }
+  }
+  else
+  {
+    digitalWrite(in1, LOW);
+    digitalWrite(in2, LOW);
+    digitalWrite(out1, LOW);
+    digitalWrite(out2, LOW);
+  }
+
+  STPWM = PWM;
+
+  //デバッグ用シリアル出力
+  Serial.print(s1);
+  Serial.print(" / ");
+  Serial.print(s2);
+  Serial.print(" / ");
+  Serial.print(sd);
+  Serial.print(" / ");
+  Serial.println(PWM);
+
+  delay(50); //50m秒（0.05秒)処理周期
+}
